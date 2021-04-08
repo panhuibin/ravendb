@@ -49,6 +49,11 @@ namespace Raven.Client.Documents.Session.Loaders
             return Include(IncludesUtil.GetPrefixedIncludePath<TInclude>(path.ToPropertyPath(), _session.Conventions));
         }
 
+        public ILoaderWithInclude<T> Include<TInclude>(Expression<Func<T, Guid>> path)
+        {
+            return Include(IncludesUtil.GetPrefixedIncludePath<TInclude>(path.ToPropertyPath(), _session.Conventions));
+        }
+
         /// <summary>
         /// Includes the specified path.
         /// </summary>

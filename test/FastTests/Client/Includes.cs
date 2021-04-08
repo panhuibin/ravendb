@@ -72,7 +72,7 @@ namespace FastTests.Client
                     (dbName, entity) => Task.FromResult(keyProvider.GenerateKey(entity));
                 var address = new AddressWithGuid() { City = "London", Country = "UK", Id = Guid.NewGuid() };
 
-                var user = new UserWithGuidAddress() { Name = "Adam", Id = Guid.NewGuid().ToString("n").Substring(0, 8), AddressId = address.Id });
+                var user = new UserWithGuidAddress() { Name = "Adam", Id = Guid.NewGuid().ToString("n").Substring(0, 8), AddressId = address.Id };
 
                 using (var session = store.OpenSession())
                 {
@@ -83,11 +83,13 @@ namespace FastTests.Client
 
                 using (var session = store.OpenSession())
                 {
-                    var userResult = session.Include<User>(x => x.AddressId).Load<User>($"AddressWithGuid/{user.Id}");
+                    var userResult = session
+                        .Include<UserWithGuidAddress, AddressWithGuid>(x => x.AddressId)
+                        .Load<UserWithGuidAddress>($"AddressWithGuid/{user.Id}");
 
                     Assert.Equal(1, session.Advanced.NumberOfRequests);
 
-                    var addressResult = session.Load<Address>($"AddressWithGuid/{user.AddressId}");
+                    var addressResult = session.Load<AddressWithGuid>($"AddressWithGuid/{user.AddressId}");
 
                     Assert.Equal(1, session.Advanced.NumberOfRequests);
                     Assert.NotNull(userResult);
@@ -96,11 +98,11 @@ namespace FastTests.Client
 
                 using (var session = store.OpenSession())
                 {
-                    var userResult = session.Include("AddressId").Load<User>($"AddressWithGuid/{user.Id}");
+                    var userResult = session.Include("AddressId").Load<UserWithGuidAddress>($"AddressWithGuid/{user.Id}");
 
                     Assert.Equal(1, session.Advanced.NumberOfRequests);
 
-                    var addressResult = session.Load<Address>($"AddressWithGuid/{user.AddressId}");
+                    var addressResult = session.Load<AddressWithGuid>($"AddressWithGuid/{user.AddressId}");
 
                     Assert.Equal(1, session.Advanced.NumberOfRequests);
                     Assert.NotNull(addressResult);

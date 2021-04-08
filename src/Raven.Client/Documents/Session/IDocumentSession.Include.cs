@@ -40,6 +40,8 @@ namespace Raven.Client.Documents.Session
         /// <param name="path">Path in documents in which server should look for a 'referenced' documents.</param>
         ILoaderWithInclude<T> Include<T, TInclude>(Expression<Func<T, string>> path);
 
+        ILoaderWithInclude<T> Include<T, TInclude>(Expression<Func<T, Guid>> path);
+
         /// <summary>
         ///     Begin a load while including the specified path
         /// </summary>

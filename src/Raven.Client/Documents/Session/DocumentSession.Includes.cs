@@ -36,6 +36,11 @@ namespace Raven.Client.Documents.Session
             return new MultiLoaderWithInclude<T>(this).Include<TInclude>(path);
         }
 
+        public ILoaderWithInclude<T> Include<T, TInclude>(Expression<Func<T, Guid>> path)
+        {
+            return new MultiLoaderWithInclude<T>(this).Include<TInclude>(path);
+        }
+
         /// <summary>
         /// Begin a load while including the specified path
         /// </summary>
