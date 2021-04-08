@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
 using Raven.Client.Documents;
 using Raven.Tests.Core.Utils.Entities;
 using Xunit;
@@ -57,6 +60,54 @@ namespace FastTests.Client
             }
         }
 
+        [Fact]
+        public void Can_Load_With_Include_With_KeyProvider()
+        {
+            using (var store = GetDocumentStore())
+            {
+                var keyProvider = new DefaultKeyProvider();
+                store.Conventions.UseOptimisticConcurrency = true;
+                store.Conventions.FindIdentityProperty = info => false;
+                store.Conventions.AsyncDocumentIdGenerator =
+                    (dbName, entity) => Task.FromResult(keyProvider.GenerateKey(entity));
+                var address = new AddressWithGuid() { City = "London", Country = "UK", Id = Guid.NewGuid() };
+
+                var user = new UserWithGuidAddress() { Name = "Adam", Id = Guid.NewGuid().ToString("n").Substring(0, 8), AddressId = address.Id });
+
+                using (var session = store.OpenSession())
+                {
+                    session.Store(user);
+                    session.Store(address);
+                    session.SaveChanges();
+                }
+
+                using (var session = store.OpenSession())
+                {
+                    var userResult = session.Include<User>(x => x.AddressId).Load<User>($"AddressWithGuid/{user.Id}");
+
+                    Assert.Equal(1, session.Advanced.NumberOfRequests);
+
+                    var addressResult = session.Load<Address>($"AddressWithGuid/{user.AddressId}");
+
+                    Assert.Equal(1, session.Advanced.NumberOfRequests);
+                    Assert.NotNull(userResult);
+                    Assert.Equal("London", addressResult.City);
+                }
+
+                using (var session = store.OpenSession())
+                {
+                    var userResult = session.Include("AddressId").Load<User>($"AddressWithGuid/{user.Id}");
+
+                    Assert.Equal(1, session.Advanced.NumberOfRequests);
+
+                    var addressResult = session.Load<Address>($"AddressWithGuid/{user.AddressId}");
+
+                    Assert.Equal(1, session.Advanced.NumberOfRequests);
+                    Assert.NotNull(addressResult);
+                    Assert.Equal("London", addressResult.City);
+                }
+            }
+        }
         [Fact]
         public void Can_Load_With_Include_Using_IIncludeBuilder()
         {
@@ -634,6 +685,29 @@ namespace FastTests.Client
 
                     Assert.Equal(1, session.Advanced.NumberOfRequests);
                 }
+            }
+        }
+
+        private class DefaultKeyProvider
+        {
+            private static readonly ConcurrentDictionary<Type, string> _prefixes = new ConcurrentDictionary<Type, string>();
+
+            private static readonly ConcurrentDictionary<Type, PropertyInfo> _idPropertyCache =
+                new ConcurrentDictionary<Type, PropertyInfo>();
+
+            public string GenerateKey(object entity)
+            {
+                
+                if (entity is AddressWithGuid address)
+                {
+                    return $"AddressWithGuid/{address.Id.ToString().ToLowerInvariant()}";
+                }
+
+                if (entity is UserWithGuidAddress user)
+                {
+                    return $"UserWithGuidAddress/{user.Id}";
+                }
+                return "";
             }
         }
 
